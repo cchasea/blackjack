@@ -14,9 +14,11 @@ A simple command-line Blackjack simulator written in Python.
 ## Example Run
 Welcome to Blackjack Simulator!
 
+
 Enter your bet per round: $100
 
 How many rounds would you like to play? 2
+
 
 === Round 1 ===
 
@@ -26,6 +28,7 @@ Dealer shows: 7
 
 Hit or Stand? [H/S]: s
 
+
 Final hands:
 
 Your hand: 9, K (Total: 19)
@@ -33,6 +36,7 @@ Your hand: 9, K (Total: 19)
 Dealer's hand: 7, 2, 5, 10 (Total: 24)
 
 You win! You earn $100.0.
+
 
 === Round 2 ===
 
