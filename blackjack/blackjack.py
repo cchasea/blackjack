@@ -1,125 +1,127 @@
 import random
+import csv
 
-def openCSV():
-    faceList = []
-    valueList = []
-    fname = 'deck.csv'
-    dataFile = open(fname, 'r')
-    dataFile.readline()
-    for line in dataFile:
-        line = line.strip()
-        face, value = line.split(',')
-        faceList.append(face)
-        valueList.append(value)
-    dataFile.close()
-    return faceList, valueList
+class Card:
+    def __init__(self, face, value):
+        self.face = face
+        self.value = int(value)
+
+    def __str__(self):
+        return self.face
 
 
-def getDealerHand(valueList):
-    dealerHand = 0
-    aceCount = 0
+class Deck:
+    def __init__(self, filename='deck.csv'):
+        self.cards = self.load_deck(filename)
 
-    while dealerHand < 17:
-        card = int(random.choice(valueList))
-        dealerHand += card
-        if card == 11:
-            aceCount += 1
+    def load_deck(self, filename):
+        cards = []
+        with open(filename, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)
+            for face, value in reader:
+                cards.append(Card(face, value))
+        return cards
 
-        while dealerHand > 21 and aceCount > 0:
-            dealerHand -= 10
-            aceCount -= 1
-
-    return dealerHand
-
-
-def getPlayerHand(valueList):
-    aceCount = 0
-    firstCard = int(random.choice(valueList))
-    secondCard = int(random.choice(valueList))
-    hand = firstCard + secondCard
-    if firstCard == 11:
-        aceCount += 1
-    if secondCard == 11:
-        aceCount += 1
-
-    if hand == 22:
-        hand = 12
-        aceCount = 1
-
-    print(f"Your starting hand: {firstCard}, {secondCard} (Total: {hand})")
-
-    while hand < 21:
-        choice = input("Enter choice [H for hit, S for stand]: ").lower()
-        if choice == 's':
-            break
-        elif choice == 'h':
-            newCard = int(random.choice(valueList))
-            print(f"You drew: {newCard}")
-            hand += newCard
-            if newCard == 11:
-                aceCount += 1
-
-            while hand > 21 and aceCount > 0:
-                hand -= 10
-                aceCount -= 1
-            print(f"Your total is now: {hand}")
-        else:
-            print("Invalid input. Please choose H or S.")
-
-    return hand
+    def draw_card(self):
+        return random.choice(self.cards)
 
 
-def determineWinner(playerTotal, dealerTotal):
-    if playerTotal > 21:
-        return 'lose'
-    elif dealerTotal > 21:
-        return 'win'
-    elif playerTotal > dealerTotal:
-        return 'win'
-    elif playerTotal < dealerTotal:
-        return 'lose'
-    else:
-        return 'push'  # tie
+class Hand:
+    def __init__(self):
+        self.cards = []
+        self.ace_count = 0
+
+    def add_card(self, card):
+        self.cards.append(card)
+        if card.value == 11:
+            self.ace_count += 1
+
+    def total(self):
+        total = sum(card.value for card in self.cards)
+        while total > 21 and self.ace_count:
+            total -= 10
+            self.ace_count -= 1
+        return total
+
+    def is_bust(self):
+        return self.total() > 21
+
+    def __str__(self):
+        return ', '.join(str(card) for card in self.cards)
 
 
-def main():
-    faceList, valueList = openCSV()
+class BlackjackGame:
+    def __init__(self):
+        self.deck = Deck()
+        self.balance = 0
 
-    try:
-        bet = float(input("Enter your bet amount per round: "))
-        rounds = int(input("Enter how many rounds to simulate: "))
-    except ValueError:
-        print("Invalid input.")
-        return
+    def play_round(self, bet):
+        player_hand = Hand()
+        dealer_hand = Hand()
 
-    balance = 0
+        for _ in range(2):
+            player_hand.add_card(self.deck.draw_card())
+        dealer_card = self.deck.draw_card()
+        dealer_hand.add_card(dealer_card)
 
-    for i in range(1, rounds + 1):
-        print(f"\n--- Round {i} ---")
-        dealerFirstCard = int(random.choice(valueList))
-        print(f"The dealer shows: {dealerFirstCard}")
-        dealerTotal = getDealerHand(valueList)
-        playerTotal = getPlayerHand(valueList)
-        print(f"Dealer's final hand: {dealerTotal}")
-        print(f"Your final hand: {playerTotal}")
+        print(f"\nYour hand: {player_hand} (Total: {player_hand.total()})")
+        print(f"Dealer shows: {dealer_card}")
 
-        result = determineWinner(playerTotal, dealerTotal)
+        while player_hand.total() < 21:
+            choice = input("Hit or Stand? [H/S]: ").lower()
+            if choice == 's':
+                break
+            elif choice == 'h':
+                new_card = self.deck.draw_card()
+                player_hand.add_card(new_card)
+                print(f"You drew: {new_card} (Total: {player_hand.total()})")
+                if player_hand.is_bust():
+                    break
+            else:
+                print("Invalid choice.")
 
-        if result == 'win':
-            balance += bet
-            print(f"You win ${bet}!")
-        elif result == 'lose':
-            balance -= bet
+        while dealer_hand.total() < 17:
+            dealer_hand.add_card(self.deck.draw_card())
+
+        print(f"\nFinal hands:")
+        print(f"Your hand: {player_hand} (Total: {player_hand.total()})")
+        print(f"Dealer's hand: {dealer_hand} (Total: {dealer_hand.total()})")
+
+        if player_hand.is_bust():
+            print(f"You busted! You lose ${bet}.")
+            self.balance -= bet
+        elif dealer_hand.is_bust() or player_hand.total() > dealer_hand.total():
+            print(f"You win! You earn ${bet}.")
+            self.balance += bet
+        elif player_hand.total() < dealer_hand.total():
             print(f"You lose ${bet}.")
+            self.balance -= bet
         else:
-            print("Push. No money won or lost.")
+            print("Push! No money lost or won.")
 
-    if balance > 0:
-        print(f"\nYou won a total of ${balance}")
-    elif balance < 0:
-        print(f"\nYou lost a total of ${-balance}")
-    else:
-        print("\nYou broke even.")
+    def run(self):
+        print("Welcome to Blackjack Simulator!\n")
+        try:
+            bet = float(input("Enter your bet per round: $"))
+            rounds = int(input("How many rounds would you like to play? "))
+        except ValueError:
+            print("Invalid input.")
+            return
+
+        for i in range(1, rounds + 1):
+            print(f"\n=== Round {i} ===")
+            self.play_round(bet)
+
+        print("\n=== Game Over ===")
+        if self.balance > 0:
+            print(f"Net win: ${self.balance}")
+        elif self.balance < 0:
+            print(f"Net loss: ${-self.balance}")
+        else:
+            print("You broke even.")
+
 
 if __name__ == "__main__":
-    main()
+    game = BlackjackGame()
+    game.run()
